@@ -1,23 +1,23 @@
 SHELL=/bin/bash
 
-PROJECT_NAME=c-boilerplate
+LIB_NAME=game
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c17 -lraylib
+CFLAGS = -Wall -Wextra -std=c17 -fPIC
 CFLAGS_DEBUG = -g
 CFLAGS_RELEASE = -O3
 
 # Directories
 SRC_DIR = src
-BIN_DIR = bin
-DEBUG_DIR = $(BIN_DIR)/debug
-RELEASE_DIR = $(BIN_DIR)/release
+LIB_DIR = lib
+DEBUG_DIR = $(LIB_DIR)/debug
+RELEASE_DIR = $(LIB_DIR)/release
 OBJ_DIR = .obj
 
 # Target executable name
-TARGET_DEBUG = $(DEBUG_DIR)/${PROJECT_NAME}
-TARGET_RELEASE = $(RELEASE_DIR)/${PROJECT_NAME}
+TARGET_DEBUG = $(DEBUG_DIR)/lib${LIB_NAME}.so
+TARGET_RELEASE = $(RELEASE_DIR)/lib${LIB_NAME}.so
 
 # Find all .c files in the src directory
 SRCS = $(wildcard $(SRC_DIR)/*.c)
@@ -36,24 +36,18 @@ release: $(TARGET_RELEASE)
 
 $(TARGET_DEBUG): $(OBJS)
 	@mkdir -p $(DEBUG_DIR)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+	$(CC) $(CFLAGS) -shared -o $@ $(OBJS)
 
 $(TARGET_RELEASE): $(OBJS)
 	@mkdir -p $(RELEASE_DIR)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+	$(CC) $(CFLAGS) -shared -o $@ $(OBJS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)
-
-run:
-	@${TARGET_DEBUG}
-
-run-release:
-	@${TARGET_RELEASE}
+	rm -rf $(OBJ_DIR) $(LIB_DIR)
 
 .PHONY: all clean release debug
 

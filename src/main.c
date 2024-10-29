@@ -1,6 +1,8 @@
+#include <dlfcn.h>
 #include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "color.c"
 #include "rust.h"
@@ -25,7 +27,7 @@ Context init() {
 }
 
 ColorExtended color = {.bits = 0,
-                       .color = (Color){.r = 0, .g = 255, .b = 255, .a = 255}};
+                       .color = {.r = 0, .g = 255, .b = 255, .a = 255}};
 
 void update(const Context *context) {
   color.bits = (color.bits + 1) % (1 << 24);
@@ -51,14 +53,51 @@ void render(const Context *context) {
   EndDrawing();
 }
 
+typedef void (*fun_ptr)();
+
 int main() {
-  Context context = init();
-  while (!WindowShouldClose()) {
-    update(&context);
-    render(&context);
+  // Context context = init();
+  // while (!WindowShouldClose()) {
+  //   update(&context);
+  //   render(&context);
+  // }
+
+  void *handle = dlopen("./libs/game/lib/debug/libgame.so", RTLD_LAZY);
+  if (!handle) {
+    fprintf(stderr, "Error loading library: %s\n", dlerror());
+    return 1;
   }
 
-  CloseWindow(); // Close window and OpenGL context
+  while (true) {
+    // Clear any existing error
+    dlerror();
+
+    // Get the function pointer
+    fun_ptr fun = (fun_ptr)dlsym(handle, "fun");
+    char *error = dlerror();
+    if (error) {
+      fprintf(stderr, "Error finding symbol: %s\n", error);
+      dlclose(handle);
+      return 1;
+    }
+
+    // Call the function
+    fun();
+
+    sleep(1);
+
+    system("cd ./libs/game && make > /dev/null");
+
+    // Close the library
+    dlclose(handle);
+
+    // reopen lib
+    handle = dlopen("./libs/game/lib/debug/libgame.so", RTLD_LAZY);
+    if (!handle) {
+      fprintf(stderr, "Error loading library: %s\n", dlerror());
+      return 1;
+    }
+  }
 
   return EXIT_SUCCESS;
 }
