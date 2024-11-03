@@ -3,8 +3,8 @@
 ## Dependencies
 
 - [inotify-tools](https://github.com/inotify-tools/inotify-tools)
-- [Make]()
-- [gcc]()
+- [Make](https://www.gnu.org/software/make/)
+- [gcc](https://gcc.gnu.org/)
 
 ## Platforms supported
 
