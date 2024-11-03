@@ -22,7 +22,7 @@
 
 ### Start the watcher
 
-Using ` inotify-wait` the watcher start listening changes in the game lib directory and recompile
+Using ` inotify-wait` the watcher start listening changes in the game library source code directory and recompile
 the game library. Open a terminal on the root of the project and execute:
 
 ```BASH
