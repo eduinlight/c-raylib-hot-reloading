@@ -29,7 +29,7 @@ the game library. Open a terminal on the root of the project and execute:
 make watch
 ```
 
-## Start the projec
+## Start the project
 
 Open a terminal on the root of the project and execute:
 
