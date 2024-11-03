@@ -1,10 +1,12 @@
 #pragma once
 
-#include "color.h"
 #include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <stdint.h>
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600

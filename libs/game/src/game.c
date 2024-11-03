@@ -1,15 +1,8 @@
 #include "game.h"
 #include <raylib.h>
-#include <stdlib.h>
-
-GameContext context;
-
-ColorExtended color = {.color = {.r = 0, .g = 255, .b = 255, .a = 255}};
+#include <stdint.h>
 
 void update(void *ctx) {
-  GameContext context = *(GameContext *)ctx;
-  color.bits = (color.bits + 1) % (1 << 24);
-  color.color.a = 255;
   if (IsKeyPressed(KEY_A)) {
     printf("A was pressed: \n");
   }
@@ -19,13 +12,16 @@ void render(void *ctx) {
   GameContext context = *(GameContext *)ctx;
   BeginDrawing();
 
-  ClearBackground(RED);
-  DrawTextEx(context.fira_code, "4", (Vector2){190, 200}, 50, 550,
-             DARKBLUE);
-  DrawLine(1, 1, 200, 200, DARKBLUE);
-  DrawTexture(context.fira_code.texture, 0, 0, color.color);
-
-  DrawFPS(0, 0);
+  ClearBackground(BLACK);
+  const char *text = "Hi, welcome to raylib";
+  const uint32_t font_size = 50;
+  const uint32_t spacing = 2;
+  Vector2 text_size =
+      MeasureTextEx(context.fira_code, text, font_size, spacing);
+  const uint32_t x = GetScreenWidth() * 0.5 - text_size.x * 0.5;
+  const uint32_t y = GetScreenHeight() * 0.5 - text_size.y * 0.5;
+  DrawTextEx(context.fira_code, text, (Vector2){.x = x, .y = y}, font_size,
+             spacing, WHITE);
 
   EndDrawing();
 }
@@ -34,8 +30,7 @@ bool should_exit(void) { return WindowShouldClose(); }
 
 void *start_game(void) {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Init");
-
-  SetTargetFPS(60);
+  SetWindowState(FLAG_WINDOW_RESIZABLE);
 
   GameContext *context = malloc(sizeof(GameContext));
   context->fira_code = LoadFont("/usr/share/fonts/TTF/FiraCode-Regular.ttf");
