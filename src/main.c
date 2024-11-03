@@ -1,103 +1,93 @@
 #include <dlfcn.h>
-#include <raylib.h>
+#include <pthread.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 
-#include "color.c"
-#include "rust.h"
+#include "watch.h"
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+#define LIBGAME_FILENAME "./libs/game/lib/debug/libgame.so"
+#define WAIT_FOR_LIB_TO_BE_READY 100000 // 100ms
 
-enum EFonts { FIRA_CODE };
+pthread_mutex_t main_mutex = PTHREAD_MUTEX_INITIALIZER;
+void lock_main_mutex() { pthread_mutex_lock(&main_mutex); }
+void unlock_main_mutex() { pthread_mutex_unlock(&main_mutex); }
 
-typedef struct {
-  Font fonts[1];
-} Context;
+void *(*start_game)(void);
+void (*render)(void *);
+void (*update)(void *);
+bool (*should_exit)(void);
 
-Context init() {
-  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Init");
+void dl_load_function(void *handle, const char *fun_name, void **fun_ptr) {
+  dlerror();
 
-  SetTargetFPS(60);
+  *fun_ptr = dlsym(handle, fun_name);
 
-  Context context = {
-      .fonts = {LoadFont("/usr/share/fonts/TTF/FiraCode-Regular.ttf")}};
-  return context;
-}
-
-ColorExtended color = {.bits = 0,
-                       .color = {.r = 0, .g = 255, .b = 255, .a = 255}};
-
-void update(const Context *context) {
-  color.bits = (color.bits + 1) % (1 << 24);
-  color.color.a = 255;
-  if (IsKeyPressed(KEY_A)) {
-    printf("Here: \n");
+  char *error = dlerror();
+  if (error) {
+    fprintf(stderr, "Error finding symbol: %s\n", error);
   }
 }
 
-void render(const Context *context) {
-  BeginDrawing();
+void refresh_lib() {
+  lock_main_mutex();
+  static void *libgame_handle = NULL;
 
-  ClearBackground(RAYWHITE);
-  DrawTextEx(context->fonts[0], "Congrats! You created your first window!",
-             (Vector2){190, 200}, 16, 0, DARKBLUE);
-  DrawLine(1, 1, 100, 100, DARKBLUE);
-  printf("r = %u, g = %u, b = %u, a = %u \n", color.color.r, color.color.g,
-         color.color.b, color.color.a);
-  DrawTexture(context->fonts[0].texture, 0, 0, color.color);
+  if (libgame_handle != NULL) {
+    dlclose(libgame_handle);
+  }
 
-  DrawFPS(0, 0);
+  printf("Loading library: %s\n", LIBGAME_FILENAME);
+  while ((libgame_handle = dlopen(LIBGAME_FILENAME, RTLD_LAZY)) == NULL) {
+    fprintf(stderr, "Error loading library: %s\n", dlerror());
+    usleep(WAIT_FOR_LIB_TO_BE_READY);
+  }
 
-  EndDrawing();
+  dl_load_function(libgame_handle, "start_game", (void **)(&start_game));
+  dl_load_function(libgame_handle, "should_exit", (void **)(&should_exit));
+  dl_load_function(libgame_handle, "update", (void **)(&update));
+  dl_load_function(libgame_handle, "render", (void **)(&render));
+
+  unlock_main_mutex();
 }
 
-typedef void (*fun_ptr)();
+void *watch_file_changes_thread() {
+  watch_file_changes(LIBGAME_FILENAME, refresh_lib);
+  return NULL;
+}
+
+void *game_loop_thread() {
+  void *context = start_game();
+  while (true) {
+    lock_main_mutex();
+    if (should_exit()) {
+      unlock_main_mutex();
+      break;
+    }
+    update(context);
+    render(context);
+    unlock_main_mutex();
+    usleep(0);
+  }
+  return NULL;
+}
 
 int main() {
-  // Context context = init();
-  // while (!WindowShouldClose()) {
-  //   update(&context);
-  //   render(&context);
-  // }
+  refresh_lib();
 
-  void *handle = dlopen("./libs/game/lib/debug/libgame.so", RTLD_LAZY);
-  if (!handle) {
-    fprintf(stderr, "Error loading library: %s\n", dlerror());
-    return 1;
+  pthread_t refresh_thread;
+  if (pthread_create(&refresh_thread, NULL, watch_file_changes_thread, NULL) !=
+      0) {
+    perror("Error initiating watch thread");
+    return EXIT_FAILURE;
   }
 
-  while (true) {
-    // Clear any existing error
-    dlerror();
-
-    // Get the function pointer
-    fun_ptr fun = (fun_ptr)dlsym(handle, "fun");
-    char *error = dlerror();
-    if (error) {
-      fprintf(stderr, "Error finding symbol: %s\n", error);
-      dlclose(handle);
-      return 1;
-    }
-
-    // Call the function
-    fun();
-
-    sleep(1);
-
-    system("cd ./libs/game && make > /dev/null");
-
-    // Close the library
-    dlclose(handle);
-
-    // reopen lib
-    handle = dlopen("./libs/game/lib/debug/libgame.so", RTLD_LAZY);
-    if (!handle) {
-      fprintf(stderr, "Error loading library: %s\n", dlerror());
-      return 1;
-    }
+  pthread_t game_thread;
+  if (pthread_create(&game_thread, NULL, game_loop_thread, NULL) != 0) {
+    perror("Error initiating game thread");
+    return EXIT_FAILURE;
   }
+
+  pthread_join(game_thread, NULL);
 
   return EXIT_SUCCESS;
 }

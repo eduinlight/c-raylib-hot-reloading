@@ -4,7 +4,12 @@ PROJECT_NAME=c-boilerplate
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c17 -lraylib
+CFLAGS = -Wall -Wextra -Wpedantic -std=c17
+# Libs
+CFLAGS += -lraylib
+# Defines
+CFLAGS += -D_XOPEN_SOURCE=500
+# Environments
 CFLAGS_DEBUG = -g
 CFLAGS_RELEASE = -O3
 
@@ -55,5 +60,10 @@ run:
 run-release:
 	@${TARGET_RELEASE}
 
-.PHONY: all clean release debug
+watch:
+	@while inotifywait -e modify,create,delete ./libs/game/src/ ; do \
+		cd ./libs/game/ && make; \
+		cd ../../; \
+	done
 
+.PHONY: all clean release debug watch run-release run

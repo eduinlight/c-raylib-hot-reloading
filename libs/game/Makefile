@@ -5,6 +5,11 @@ LIB_NAME=game
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c17 -fPIC
+# Libs
+# CFLAGS += -lraylib
+# Defines
+CFLAGS += -D_XOPEN_SOURCE=500
+# Environments
 CFLAGS_DEBUG = -g
 CFLAGS_RELEASE = -O3
 
